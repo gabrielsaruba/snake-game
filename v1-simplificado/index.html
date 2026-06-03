@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SNAKE GAME - VERSÃO SIMPLIFICADA</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.12.3/brython.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.12.3/brython_stdlib.js"></script>
+ 
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #111116; color: #ffffff;
+      font-family: Arial, sans-serif;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100vh; overflow: hidden;
+    }
+    .screen { display: none; flex-direction: column; align-items: center; gap: 20px; }
+    .screen.active { display: flex; }
+    h1 { font-size: 36px; color: #39ff6a; }
+    .btn {
+      background: #39ff6a; color: #000; font-weight: bold; padding: 15px 40px;
+      border: none; border-radius: 8px; cursor: pointer; font-size: 18px;
+    }
+    .btn:hover { background: #2ecc61; }
+    .game-container { position: relative; }
+    canvas { background: #1a1a24; border: 2px solid #2a2a40; border-radius: 8px; }
+    .avisos { height: 30px; font-weight: bold; font-size: 16px; margin-top: 5px; text-align: center; }
+    .aviso-inv { color: #ff3c6e; }
+    .aviso-turbo { color: #ffd700; }
+  </style>
+</head>
+ 
+<body onload="brython()">
+ 
+  <div id="menu" class="screen active">
+    <h1>SNAKE GAME</h1>
+    <p>Pegue as maçãs antes que o tempo acabe!</p>
+    <button class="btn" id="btn-jogar">🕹️ Começar Jogo</button>
+  </div>
+ 
+  <div id="jogo" class="screen">
+    <h2>Score: <span id="score">0</span> | Tempo: <span id="tempo">7.0</span>s</h2>
+    <div class="game-container">
+      <canvas id="canvas" width="540" height="540"></canvas>
+    </div>
+    <div id="status-texto" class="avisos"></div>
+  </div>
+ 
+  <script type="text/python">
+from browser import document, timer
+import random
+ 
+TAMANHO_CANVAS  = 540
+TOTAL_CELULAS   = 27
+TAMANHO_CELULA  = TAMANHO_CANVAS // TOTAL_CELULAS
+
+cobra           = []
+direcao         = [1, 0]
+maca            = [0, 0]
+tipo_maca       = "normal"
+pontuacao       = 0
+jogo_ativo      = False
+ 
+tempo_maca_frames = 70
+efeito_frames     = 0
+efeito_ativo      = "nenhum"
+ 
+def mostrar_tela(nome_tela):
+    if nome_tela == "jogo":
+        document["menu"].classList.remove("active")
+        document["jogo"].classList.add("active")
+    else:
+        document["jogo"].classList.remove("active")
+        document["menu"].classList.add("active")
+ 
+def criar_maca():
+    global maca, tipo_maca, tempo_maca_frames
+    while True:
+        x = random.randint(0, TOTAL_CELULAS - 1)
+        y = random.randint(0, TOTAL_CELULAS - 1)
+        if [x, y] not in cobra:
+            maca = [x, y]
+            break
+    sorteio = random.random()
+    if sorteio < 0.60:
+        tipo_maca = "normal"
+    elif sorteio < 0.75:
+        tipo_maca = "turbo"
+    elif sorteio < 0.90:
+        tipo_maca = "inversa"
+    else:
+        tipo_maca = "hacker"
+    tempo_maca_frames = 70
+ 
+def iniciar_jogo(evento):
+    global cobra, direcao, pontuacao, jogo_ativo, efeito_ativo, efeito_frames
+    pontuacao = 0
+    efeito_ativo = "nenhum"
+    efeito_frames = 0
+    direcao = [1, 0]
+    centro = TOTAL_CELULAS // 2
+    cobra = [[centro, centro], [centro - 1, centro], [centro - 2, centro]]
+    criar_maca()
+    document["score"].innerHTML = "0"
+    document["status-texto"].innerHTML = ""
+    mostrar_tela("jogo")
+    jogo_ativo = True
+ 
+def atualizar_jogo():
+    global cobra, direcao, pontuacao, jogo_ativo, tempo_maca_frames, efeito_frames, efeito_ativo
+    if not jogo_ativo:
+        return
+    tempo_maca_frames -= 1
+    document["tempo"].innerHTML = str(round(tempo_maca_frames / 10, 1))
+    if tempo_maca_frames <= 0:
+        if pontuacao > 0:
+            pontuacao -= 1
+            document["score"].innerHTML = str(pontuacao)
+        criar_maca()
+        return
+    if efeito_frames > 0:
+        efeito_frames -= 1
+        if efeito_frames <= 0:
+            efeito_ativo = "nenhum"
+            document["status-texto"].innerHTML = ""
+    nova_cabeca = [cobra[0][0] + direcao[0], cobra[0][1] + direcao[1]]
+    if nova_cabeca[0] < 0 or nova_cabeca[0] >= TOTAL_CELULAS or nova_cabeca[1] < 0 or nova_cabeca[1] >= TOTAL_CELULAS:
+        jogo_ativo = False
+        alert(f"Fim de Jogo! Bateu na parede. Pontos: {pontuacao}")
+        mostrar_tela("menu")
+        return
+    if nova_cabeca in cobra:
+        jogo_ativo = False
+        alert(f"Fim de Jogo! Comeu a si mesmo. Pontos: {pontuacao}")
+        mostrar_tela("menu")
+        return
+    cobra.insert(0, nova_cabeca)
+    if nova_cabeca == maca:
+        if tipo_maca == "normal":
+            pontuacao += 1
+        elif tipo_maca == "turbo":
+            pontuacao += 2
+            efeito_ativo = "turbo"
+            efeito_frames = 40
+            document["status-texto"].innerHTML = "<span class='aviso-turbo'>⚡ MODO TURBO ATIVADO!</span>"
+        elif tipo_maca == "inversa":
+            pontuacao += 3
+            efeito_ativo = "inversa"
+            efeito_frames = 50
+            document["status-texto"].innerHTML = "<span class='aviso-inv'>⚠️ CONTROLES INVERTIDOS!</span>"
+        elif tipo_maca == "hacker":
+            pontuacao += 1
+            efeito_ativo = "nenhum"
+            efeito_frames = 0
+            document["status-texto"].innerHTML = "🟢 Hacker: Efeitos limpos!"
+            if len(cobra) > 3:
+                cobra = cobra[:len(cobra)//2]
+        document["score"].innerHTML = str(pontuacao)
+        criar_maca()
+    else:
+        cobra.pop()
+    desenhar_tudo()
+    proximo_intervalo = 50 if efeito_ativo == "turbo" else 120
+    timer.set_timeout(atualizar_jogo, proximo_intervalo)
+ 
+def desenhar_tudo():
+    canvas = document["canvas"]
+    ctx = canvas.getContext("2d")
+    ctx.fillStyle = "#1a1a24"
+    ctx.fillRect(0, 0, TAMANHO_CANVAS, TAMANHO_CANVAS)
+    if tipo_maca == "normal":    ctx.fillStyle = "#ff3c6e"
+    elif tipo_maca == "turbo":   ctx.fillStyle = "#ffd700"
+    elif tipo_maca == "inversa": ctx.fillStyle = "#00d4ff"
+    elif tipo_maca == "hacker":  ctx.fillStyle = "#39ff6a"
+    ctx.fillRect(maca[0]*TAMANHO_CELULA, maca[1]*TAMANHO_CELULA, TAMANHO_CELULA-2, TAMANHO_CELULA-2)
+    for i, pedaco in enumerate(cobra):
+        if i == 0:
+            ctx.fillStyle = "#00d4ff" if efeito_ativo == "inversa" else "#39ff6a"
+        else:
+            ctx.fillStyle = "#22aa4e"
+        ctx.fillRect(pedaco[0]*TAMANHO_CELULA, pedaco[1]*TAMANHO_CELULA, TAMANHO_CELULA-2, TAMANHO_CELULA-2)
+ 
+def tratar_teclado(evento):
+    global direcao
+    key = evento.key
+    cima     = [0, -1]
+    baixo    = [0,  1]
+    esquerda = [-1, 0]
+    direita  = [1,  0]
+    if efeito_ativo == "inversa":
+        cima, baixo, esquerda, direita = [0,1], [0,-1], [1,0], [-1,0]
+    if key in ["ArrowUp", "w", "W"] and direcao != baixo:
+        direcao = cima
+    elif key in ["ArrowDown", "s", "S"] and direcao != cima:
+        direcao = baixo
+    elif key in ["ArrowLeft", "a", "A"] and direcao != direita:
+        direcao = esquerda
+    elif key in ["ArrowRight", "d", "D"] and direcao != esquerda:
+        direcao = direita
+ 
+document["btn-jogar"].bind("click", iniciar_jogo)
+document["btn-jogar"].bind("click", lambda e: timer.set_timeout(atualizar_jogo, 120))
+document.bind("keydown", tratar_teclado)
+  </script>
+</body>
+</html>
