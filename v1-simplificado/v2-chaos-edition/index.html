@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SNAKE GAME - CHAOS EDITION</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.12.3/brython.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/brython/3.12.3/brython_stdlib.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet" />
+ 
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg:#0a0a10; --surface:#12121c; --surface2:#1a1a28; --border:#2a2a40;
+      --green:#39ff6a; --blue:#00d4ff; --red:#ff3c6e; --text:#e8e8f0;
+      --muted:#6060a0; --gold:#ffd700;
+      --font-title:'Orbitron',monospace; --font-body:'Rajdhani',sans-serif;
+    }
+    html,body {
+      height:100%; width:100%;
+      background:var(--bg); color:var(--text); font-family:var(--font-body);
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+      background-image:linear-gradient(rgba(57,255,106,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(57,255,106,0.03) 1px,transparent 1px);
+      background-size:40px 40px;
+    }
+    .screen { display:none; flex-direction:column; align-items:center; justify-content:center; width:100%; padding:20px 16px; gap:22px; }
+    .screen.active { display:flex; }
+    .logo-icon { font-size:64px; filter:drop-shadow(0 0 16px var(--green)); animation:float 3s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    .logo-title { font-family:var(--font-title); font-weight:900; font-size:clamp(28px,8vw,44px); letter-spacing:4px; background:linear-gradient(135deg,var(--green),var(--blue)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .logo-sub { font-size:12px; letter-spacing:6px; color:var(--muted); font-family:var(--font-title); }
+    .hs-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 40px; text-align:center; }
+    .hs-label { font-size:11px; letter-spacing:3px; color:var(--muted); text-transform:uppercase; }
+    .hs-value { font-family:var(--font-title); font-size:30px; color:var(--gold); text-shadow:0 0 12px rgba(255,215,0,.5); }
+    .btn { font-family:var(--font-title); font-size:14px; letter-spacing:2px; text-transform:uppercase; border:none; border-radius:14px; cursor:pointer; padding:16px 40px; width:100%; max-width:300px; transition:transform .1s,box-shadow .1s; }
+    .btn:active { transform:scale(0.93); }
+    .btn-play { background:linear-gradient(135deg,#1aff6a,#00c850); color:#001a0a; box-shadow:0 0 24px rgba(57,255,106,.45); font-size:18px; padding:20px 40px; }
+    .btn-secondary { background:var(--surface2); color:var(--blue); border:1px solid var(--border); }
+    #screen-game { gap:8px; padding:10px 12px; }
+    .game-hdr { display:flex; align-items:center; justify-content:space-between; width:540px; }
+    .score-lbl { font-family:var(--font-title); font-size:13px; letter-spacing:2px; color:var(--muted); }
+    .score-lbl span { color:var(--green); font-size:22px; text-shadow:0 0 10px rgba(57,255,106,.6); }
+    .btn-back { background:var(--surface2); border:1px solid var(--border); color:var(--muted); font-family:var(--font-body); font-size:13px; padding:6px 14px; border-radius:8px; cursor:pointer; }
+    .btn-back:hover { color:var(--red); border-color:var(--red); }
+    .btn-back:active { transform:scale(0.93); }
+    .timer-wrap { width:540px; height:8px; background:var(--surface2); border-radius:4px; overflow:hidden; border:1px solid var(--border); }
+    #timer-bar { height:100%; width:100%; border-radius:4px; transition:background .3s; }
+    .status-row { width:540px; height:22px; display:flex; align-items:center; gap:10px; }
+    .tag { font-family:var(--font-title); font-size:10px; letter-spacing:2px; padding:3px 10px; border-radius:20px; animation:pulse .6s ease-in-out infinite alternate; display:none; }
+    .tag.active { display:inline-block; }
+    .tag-turbo { background:rgba(255,215,0,.2); color:var(--gold); border:1px solid var(--gold); }
+    @keyframes pulse { from{opacity:.6} to{opacity:1} }
+    #game-canvas { display:block; background:var(--surface); border-radius:14px; border:2px solid var(--border); box-shadow:0 0 40px rgba(57,255,106,.08),0 8px 32px rgba(0,0,0,.6); width:540px; height:540px; }
+    .canvas-wrap { position:relative; width:540px; height:540px; }
+    #go-overlay { display:none; position:absolute; inset:0; background:rgba(10,10,16,.88); backdrop-filter:blur(4px); flex-direction:column; align-items:center; justify-content:center; gap:10px; border-radius:14px; }
+    #go-overlay.active { display:flex; }
+    .go-title { font-family:var(--font-title); font-size:32px; color:var(--red); text-shadow:0 0 20px rgba(255,60,110,.7); letter-spacing:3px; }
+    .go-reason { font-size:14px; color:var(--muted); letter-spacing:1px; font-style:italic; }
+    .go-score { font-size:15px; color:var(--muted); letter-spacing:2px; }
+    .go-score strong { color:var(--gold); font-size:22px; }
+    .go-btns { display:flex; gap:12px; margin-top:8px; }
+    .go-btns .btn { max-width:140px; padding:12px 20px; font-size:12px; }
+  </style>
+</head>
+ 
+<body onload="brython()">
+ 
+  <div id="screen-menu" class="screen active">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+      <div class="logo-icon">🐍</div>
+      <div class="logo-title">SNAKE GAME</div>
+      <div class="logo-sub">Fruit Chaos Edition</div>
+    </div>
+    <div class="hs-card">
+      <div class="hs-label">⭐ Recorde</div>
+      <div class="hs-value" id="hs-display">0</div>
+    </div>
+    <button class="btn btn-play" id="btn-play">🕹️ Jogar</button>
+  </div>
+ 
+  <div id="screen-game" class="screen">
+    <div class="game-hdr">
+      <div class="score-lbl">SCORE &nbsp;<span id="score-val">0</span></div>
+      <button class="btn-back" id="btn-back-game">✕ Menu</button>
+    </div>
+    <div class="timer-wrap">
+      <div id="timer-bar"></div>
+    </div>
+    <div class="status-row">
+      <span class="tag tag-turbo" id="tag-turbo">⚡ VELOCIDADE TURBO!</span>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="game-canvas" width="540" height="540"></canvas>
+      <div id="go-overlay">
+        <div class="go-title">GAME OVER</div>
+        <div class="go-reason" id="go-reason"></div>
+        <div class="go-score">Pontuação: <strong id="go-pts">0</strong></div>
+        <div class="go-btns">
+          <button class="btn btn-play" id="btn-retry">▶ Repetir</button>
+          <button class="btn btn-secondary" id="btn-go-menu">⌂ Menu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <script type="text/python">
+from browser import document, timer, window
+import math, random
+import time
+
+CANVAS_PX  = 540
+CELULAS    = 27
+TC         = CANVAS_PX // CELULAS
+VEL_NORMAL = 130
+VEL_TURBO  = 55
+TEMPO_MACA = 7.0
+TICK_TIMER = 100
+
+cobra           = []
+direcao         = [1, 0]
+proxima_direcao = [1, 0]
+maca            = [0, 0]
+tipo_maca       = "normal"
+pontuacao       = 0
+recorde         = 0
+timer_id        = None
+jogo_ativo      = False
+turbo_ativo     = False
+timer_turbo_id  = None
+tempo_maca_resto = 7.0
+timer_barra_id  = None
+
+def mostrar_tela(nome):
+    for tid in ["screen-menu", "screen-game"]:
+        el = document[tid]
+        if tid == "screen-" + nome:
+            el.classList.add("active")
+        else:
+            el.classList.remove("active")
+
+def gerar_maca():
+    global maca, tipo_maca, tempo_maca_resto
+    while True:
+        col = random.randint(0, CELULAS - 1)
+        lin = random.randint(0, CELULAS - 1)
+        if [col, lin] not in cobra:
+            maca = [col, lin]
+            break
+    sorteio = random.random()
+    if sorteio < 0.55:
+        tipo_maca = "normal"
+    elif sorteio < 0.75:
+        tipo_maca = "turbo"
+    elif sorteio < 0.90:
+        tipo_maca = "giga"
+    else:
+        tipo_maca = "hacker"
+    tempo_maca_resto = TEMPO_MACA
+
+def tick_barra():
+    global tempo_maca_resto, pontuacao
+    if not jogo_ativo:
+        return
+    tempo_maca_resto -= TICK_TIMER / 1000.0
+    if tempo_maca_resto <= 0:
+        if pontuacao > 0:
+            pontuacao -= 1
+            document["score-val"].innerHTML = str(pontuacao)
+        gerar_maca()
+        return
+    pct = tempo_maca_resto / TEMPO_MACA
+    barra = document["timer-bar"]
+    barra.style.width = str(int(pct * 100)) + "%"
+    if pct > 0.5:
+        barra.style.background = "linear-gradient(90deg, #39ff6a, #00c850)"
+    elif pct > 0.25:
+        barra.style.background = "linear-gradient(90deg, #ffd700, #ff9500)"
+    else:
+        barra.style.background = "linear-gradient(90deg, #ff3c6e, #cc002a)"
+
+def ativar_turbo():
+    global turbo_ativo, timer_turbo_id, timer_id
+    turbo_ativo = True
+    document["tag-turbo"].classList.add("active")
+    if timer_id is not None:
+        timer.clear_interval(timer_id)
+    timer_id = timer.set_interval(loop, VEL_TURBO)
+    if timer_turbo_id is not None:
+        timer.clear_timeout(timer_turbo_id)
+    def desativar_turbo():
+        global turbo_ativo, timer_turbo_id, timer_id
+        turbo_ativo = False
+        timer_turbo_id = None
+        document["tag-turbo"].classList.remove("active")
+        if timer_id is not None:
+            timer.clear_interval(timer_id)
+        timer_id = timer.set_interval(loop, VEL_NORMAL)
+    timer_turbo_id = timer.set_timeout(desativar_turbo, 5000)
+
+def aplicar_efeito_hacker():
+    global turbo_ativo, cobra, timer_id
+    if turbo_ativo:
+        turbo_ativo = False
+        document["tag-turbo"].classList.remove("active")
+        if timer_id is not None:
+            timer.clear_interval(timer_id)
+        timer_id = timer.set_interval(loop, VEL_NORMAL)
+    if len(cobra) > 4:
+        cobra = cobra[:len(cobra) // 2]
+
+def iniciar_jogo():
+    global cobra, direcao, proxima_direcao, pontuacao
+    global jogo_ativo, timer_id, timer_barra_id, turbo_ativo
+    for tid in [timer_id, timer_barra_id, timer_turbo_id]:
+        if tid is not None:
+            try: timer.clear_interval(tid)
+            except: pass
+            try: timer.clear_timeout(tid)
+            except: pass
+    pontuacao       = 0
+    direcao         = [1, 0]
+    proxima_direcao = [1, 0]
+    turbo_ativo     = False
+    document["tag-turbo"].classList.remove("active")
+    document["go-overlay"].classList.remove("active")
+    cx = CELULAS // 2
+    cy = CELULAS // 2
+    cobra = [[cx, cy], [cx - 1, cy], [cx - 2, cy]]
+    gerar_maca()
+    document["score-val"].innerHTML = "0"
+    mostrar_tela("game")
+    jogo_ativo     = True
+    timer_id       = timer.set_interval(loop, VEL_NORMAL)
+    timer_barra_id = timer.set_interval(tick_barra, TICK_TIMER)
+    desenhar()
+
+def loop():
+    global cobra, direcao, pontuacao, recorde, jogo_ativo
+    if not jogo_ativo:
+        return
+    direcao = proxima_direcao[:]
+    hx = cobra[0][0] + direcao[0]
+    hy = cobra[0][1] + direcao[1]
+    if hx < 0 or hx >= CELULAS or hy < 0 or hy >= CELULAS:
+        game_over("💥 Colisão fatal com a parede!")
+        return
+    if [hx, hy] in cobra:
+        game_over("🐍 Você mordeu seu próprio rabo!")
+        return
+    comeu = (hx == maca[0] and hy == maca[1])
+    cobra.insert(0, [hx, hy])
+    if comeu:
+        if tipo_maca == "normal":
+            pontuacao += 1
+        elif tipo_maca == "turbo":
+            pontuacao += 2
+            ativar_turbo()
+        elif tipo_maca == "giga":
+            pontuacao += 4
+        elif tipo_maca == "hacker":
+            pontuacao += 1
+            aplicar_efeito_hacker()
+        document["score-val"].innerHTML = str(pontuacao)
+        if pontuacao > recorde:
+            recorde = pontuacao
+            document["hs-display"].innerHTML = str(recorde)
+        gerar_maca()
+    else:
+        cobra.pop()
+    desenhar()
+
+def desenhar():
+    canvas = document["game-canvas"]
+    ctx    = canvas.getContext("2d")
+    ctx.fillStyle = "#12121c"
+    ctx.fillRect(0, 0, CANVAS_PX, CANVAS_PX)
+    ctx.strokeStyle = "rgba(255,255,255,0.03)"
+    ctx.lineWidth   = 0.5
+    for i in range(CELULAS + 1):
+        ctx.beginPath(); ctx.moveTo(i*TC, 0); ctx.lineTo(i*TC, CANVAS_PX); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(0, i*TC); ctx.lineTo(CANVAS_PX, i*TC); ctx.stroke()
+    if tipo_maca == "normal":
+        cor_ext = "#ff3c6e"; cor_int = "#ff6090"
+    elif tipo_maca == "turbo":
+        cor_ext = "#ffd700"; cor_int = "#fff59d"
+    elif tipo_maca == "giga":
+        cor_ext = "#00d4ff"; cor_int = "#80e5ff"
+    elif tipo_maca == "hacker":
+        cor_ext = "#39ff6a"; cor_int = "#a3ffb8"
+    if tempo_maca_resto < 2.0 and int(time.time() * 8) % 2 == 0:
+        cor_ext = "#ffffff"; cor_int = "#e0e0e0"
+    cx2, cy2 = maca[0] * TC + TC / 2, maca[1] * TC + TC / 2
+    raio = TC * 0.42
+    ctx.shadowColor = cor_ext
+    ctx.shadowBlur  = 16
+    gm = ctx.createRadialGradient(cx2 - raio*0.3, cy2 - raio*0.3, 1, cx2, cy2, raio)
+    gm.addColorStop(0, cor_int)
+    gm.addColorStop(1, cor_ext)
+    ctx.fillStyle = gm
+    ctx.beginPath(); ctx.arc(cx2, cy2, raio, 0, 2 * math.pi); ctx.fill()
+    ctx.shadowBlur = 0
+    ctx.fillStyle  = "rgba(255,255,255,0.4)"
+    ctx.beginPath(); ctx.arc(cx2 - raio*0.3, cy2 - raio*0.3, raio*0.2, 0, 2*math.pi); ctx.fill()
+    for idx, seg in enumerate(cobra):
+        mg = int(TC * 0.18)
+        x, y = seg[0] * TC + mg, seg[1] * TC + mg
+        w, h = TC - mg * 2, TC - mg * 2
+        r = w * 0.35
+        if idx == 0:
+            cor_cobra = "#ffd700" if turbo_ativo else "#39ff6a"
+            ctx.shadowColor = cor_cobra
+            ctx.shadowBlur  = 12
+            ctx.fillStyle   = cor_cobra
+        else:
+            factor = 1 - (idx / max(len(cobra), 1)) * 0.5
+            ctx.shadowBlur = 2
+            if turbo_ativo:
+                ctx.fillStyle = f"rgb({int(220*factor)}, {int(170*factor)}, 0)"
+            else:
+                ctx.fillStyle = f"rgb({int(30*factor)}, {int(210*factor)}, {int(70*factor)})"
+        ctx.beginPath()
+        ctx.moveTo(x+r, y); ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r)
+        ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h)
+        ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r)
+        ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y)
+        ctx.closePath(); ctx.fill()
+        ctx.shadowBlur = 0
+
+def game_over(motivo=""):
+    global jogo_ativo, timer_id, timer_barra_id, timer_turbo_id
+    jogo_ativo = False
+    for tid_val, fn in [(timer_id, timer.clear_interval), (timer_barra_id, timer.clear_interval),
+                        (timer_turbo_id, timer.clear_timeout)]:
+        if tid_val is not None:
+            try: fn(tid_val)
+            except: pass
+    timer_id = timer_barra_id = timer_turbo_id = None
+    document["go-pts"].innerHTML    = str(pontuacao)
+    document["go-reason"].innerHTML = motivo
+    document["go-overlay"].classList.add("active")
+
+def dir_cima():
+    global proxima_direcao
+    if direcao[1] != 1: proxima_direcao = [0, -1]
+
+def dir_baixo():
+    global proxima_direcao
+    if direcao[1] != -1: proxima_direcao = [0, 1]
+
+def dir_esq():
+    global proxima_direcao
+    if direcao[0] != 1: proxima_direcao = [-1, 0]
+
+def dir_dir():
+    global proxima_direcao
+    if direcao[0] != -1: proxima_direcao = [1, 0]
+
+def on_key(ev):
+    k = ev.key
+    if   k in ["ArrowUp",    "w", "W"]: dir_cima()
+    elif k in ["ArrowDown",  "s", "S"]: dir_baixo()
+    elif k in ["ArrowLeft",  "a", "A"]: dir_esq()
+    elif k in ["ArrowRight", "d", "D"]: dir_dir()
+    if k in ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"]:
+        ev.preventDefault()
+
+def voltar_menu(ev=None):
+    global jogo_ativo, timer_id, timer_barra_id, timer_turbo_id
+    jogo_ativo = False
+    for tid_val, fn in [(timer_id, timer.clear_interval), (timer_barra_id, timer.clear_interval),
+                        (timer_turbo_id, timer.clear_timeout)]:
+        if tid_val is not None:
+            try: fn(tid_val)
+            except: pass
+    timer_id = timer_barra_id = timer_turbo_id = None
+    document["tag-turbo"].classList.remove("active")
+    document["go-overlay"].classList.remove("active")
+    document["hs-display"].innerHTML = str(recorde)
+    mostrar_tela("menu")
+
+document["btn-play"].bind("click",      lambda e: iniciar_jogo())
+document["btn-back-game"].bind("click", voltar_menu)
+document["btn-retry"].bind("click",     lambda e: iniciar_jogo())
+document["btn-go-menu"].bind("click",   voltar_menu)
+document.bind("keydown", on_key)
+  </script>
+</body>
+</html>
